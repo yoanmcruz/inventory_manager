@@ -1,0 +1,60 @@
+ {% extends 'base.html' %}
+
+{% block title %}Iniciar Sesión - Inventario IT{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-box-arrow-in-right"></i> Iniciar Sesión</h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i> 
+                        Usuario o contraseña incorrectos. Por favor intenta nuevamente.
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Usuario o Email</label>
+                        <input type="text" class="form-control" id="username" name="username" 
+                               placeholder="usuario@tuempresa.com" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Contraseña</label>
+                        <input type="password" class="form-control" id="password" name="password" 
+                               placeholder="Ingresa tu contraseña" required>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="remember_me" name="remember_me">
+                        <label class="form-check-label" for="remember_me">Recordarme</label>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-box-arrow-in-right"></i> Iniciar Sesión
+                    </button>
+                    
+                    <div class="text-center mt-3">
+                        <a href="{% url 'password_reset' %}">¿Olvidaste tu contraseña?</a>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center">
+                ¿No tienes cuenta? <a href="{% url 'register' %}">Regístrate aquí</a>
+            </div>
+        </div>
+        
+        <div class="alert alert-info mt-3">
+            <i class="bi bi-info-circle"></i>
+            <strong>Acceso restringido:</strong> Solo personal autorizado con email @tuempresa.com
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,8 @@
+Django==4.2.7
+pandas>=2.0.3
+openpyxl==3.1.2
+reportlab==4.0.6
+XlsxWriter==3.1.9
+djangorestframework==3.14.0
+django-cors-headers==4.3.1
+django-filter==23.3

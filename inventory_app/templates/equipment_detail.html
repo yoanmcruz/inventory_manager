@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ equipment }} - Inventario IT{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-pc-display"></i> {{ equipment }}</h1>
+    <div class="btn-group">
+        <a href="{% url 'equipment_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+        {% if user.is_superuser %}
+        <a href="{% url 'equipment_edit' equipment.pk %}" class="btn btn-outline-primary">
+            <i class="bi bi-pencil"></i> Editar
+        </a>
+        <a href="{% url 'maintenance_create' equipment.pk %}" class="btn btn-outline-warning">
+            <i class="bi bi-tools"></i> Registrar Mantenimiento
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <i class="bi bi-info-circle"></i> Información del Equipo
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-sm-4 fw-bold">Tipo:</div>
+                    <div class="col-sm-8">{{ equipment.get_type_display }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 fw-bold">Marca/Modelo:</div>
+                    <div class="col-sm-8">{{ equipment.brand }} {{ equipment.model }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 fw-bold">Número de Serie:</div>
+                    <div class="col-sm-8"><code>{{ equipment.serial_number }}</code></div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 fw-bold">Ubicación:</div>
+                    <div class="col-sm-8">{{ equipment.location }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 fw-bold">Estado:</div>
+                    <div class="col-sm-8">
+                        <span class="badge 
+                            {% if equipment.status == 'AVA' %}bg-success
+                            {% elif equipment.status == 'INU' %}bg-primary
+                            {% elif equipment.status == 'REP' %}bg-warning
+                            {% else %}bg-secondary{% endif %}">
+                            {{ equipment.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 fw-bold">Asignado a:</div>
+                    <div class="col-sm-8">
+                        {% if equipment.assigned_to %}
+                            {{ equipment.assigned_to }}
+                        {% else %}
+                            <span class="text-muted">No asignado</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 fw-bold">Fecha Compra:</div>
+                    <div class="col-sm-8">{{ equipment.purchase_date|date:"d/m/Y" }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 fw-bold">Garantía:</div>
+                    <div class="col-sm-8">
+                        {% if equipment.warranty_expiry %}
+                            {{ equipment.warranty_expiry|date:"d/m/Y" }}
+                            {% if equipment.warranty_expiry < today %}
+                                <span class="badge bg-danger">Expirada</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-muted">No especificada</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if equipment.notes %}
+                <div class="row mb-3">
+                    <div class="col-sm-4 fw-bold">Notas:</div>
+                    <div class="col-sm-8">{{ equipment.notes }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <i class="bi bi-cpu"></i> Componentes
+            </div>
+            <div class="card-body">
+                {% if components %}
+                <div class="list-group">
+                    {% for component in components %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ component.component_type }}</h6>
+                            <small>{{ component.brand }} {{ component.model }}</small>
+                        </div>
+                        {% if component.serial_number %}
+                        <small class="text-muted">Serial: {{ component.serial_number }}</small>
+                        {% endif %}
+                        {% if component.specifications %}
+                        <p class="mb-1 mt-2"><small>{{ component.specifications }}</small></p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3">
+                    <i class="bi bi-inbox"></i> No hay componentes registrados
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-light">
+        <i class="bi bi-clock-history"></i> Historial de Mantenimientos
+    </div>
+    <div class="card-body">
+        {% if maintenance_logs %}
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Descripción</th>
+                        <th>Técnico</th>
+                        <th>Duración</th>
+                        <th>Costo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in maintenance_logs %}
+                    <tr>
+                        <td>{{ log.start_date|date:"d/m/Y H:i" }}</td>
+                        <td><span class="badge bg-secondary">{{ log.get_maintenance_type_display }}</span></td>
+                        <td>{{ log.title }}</td>
+                        <td>{{ log.technician }}</td>
+                        <td>
+                            {% if log.end_date %}
+                                {{ log.end_date|timesince:log.start_date }}
+                            {% else %}
+                                <span class="badge bg-warning">En progreso</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if log.cost %}
+                                ${{ log.cost }}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center py-4">
+            <i class="bi bi-inbox"></i> No hay historial de mantenimientos
+        </p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block title %}Reportes - Inventario IT{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-graph-up"></i> Reportes y Exportaciones</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <i class="bi bi-pc-display"></i> Reportes de Equipos
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    <a href="{% url 'export_report' 'equipment_excel' %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-file-earmark-excel text-success"></i>
+                                Exportar Equipos a Excel
+                            </div>
+                            <i class="bi bi-download"></i>
+                        </div>
+                        <small class="text-muted">Todos los equipos en formato Excel (.xlsx)</small>
+                    </a>
+                    <a href="{% url 'export_report' 'equipment_pdf' %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-file-earmark-pdf text-danger"></i>
+                                Exportar Equipos a PDF
+                            </div>
+                            <i class="bi bi-download"></i>
+                        </div>
+                        <small class="text-muted">Reporte completo de equipos en formato PDF</small>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <i class="bi bi-tools"></i> Reportes de Mantenimiento
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    <a href="{% url 'export_report' 'maintenance_excel' %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-file-earmark-excel text-success"></i>
+                                Exportar Mantenimientos a Excel
+                            </div>
+                            <i class="bi bi-download"></i>
+                        </div>
+                        <small class="text-muted">Todos los mantenimientos en formato Excel (.xlsx)</small>
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action disabled">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-file-earmark-pdf text-danger"></i>
+                                Reportes Personalizados (Próximamente)
+                            </div>
+                            <i class="bi bi-clock"></i>
+                        </div>
+                        <small class="text-muted">Reportes personalizados por fechas y tipos</small>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-light">
+        <i class="bi bi-database"></i> Backup del Sistema
+    </div>
+    <div class="card-body">
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> Los backups automáticos se ejecutan diariamente a las 2:00 AM.
+            Los backups se mantienen por 30 días antes de ser eliminados automáticamente.
+        </div>
+        
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h5>Backups Disponibles</h5>
+                <p class="text-muted">
+                    {% if backup_count > 0 %}
+                        {{ backup_count }} backup{{ backup_count|pluralize }} encontrado{{ backup_count|pluralize }}
+                        {% if latest_backup %}
+                            - Último: {{ latest_backup.created|date:"d/m/Y H:i" }}
+                        {% endif %}
+                    {% else %}
+                        No hay backups disponibles
+                    {% endif %}
+                </p>
+            </div>
+            <div class="btn-group">
+                <a href="{% url 'backup_database' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-database"></i> Generar Backup Manual
+                </a>
+                <a href="{% url 'backup_list' %}" class="btn btn-outline-info">
+                    <i class="bi bi-list"></i> Ver Todos
+                </a>
+            </div>
+        </div>
+        
+        {% if latest_backup %}
+        <div class="mt-3">
+            <div class="alert alert-success">
+                <i class="bi bi-check-circle"></i>
+                <strong>Último backup:</strong> {{ latest_backup.name }}
+                ({{ latest_backup.size|filesizeformat }} - {{ latest_backup.created|date:"d/m/Y H:i" }})
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

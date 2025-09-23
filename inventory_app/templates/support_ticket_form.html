@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block title %}Nuevo Ticket - Inventario IT{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-light">
+                <i class="bi bi-ticket-perforated"></i> Crear Nuevo Ticket de Soporte
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.title.id_for_label }}" class="form-label">Título *</label>
+                        {{ form.title }}
+                        {% if form.title.errors %}
+                        <div class="text-danger">
+                            {% for error in form.title.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.priority.id_for_label }}" class="form-label">Prioridad *</label>
+                        {{ form.priority }}
+                        {% if form.priority.errors %}
+                        <div class="text-danger">
+                            {% for error in form.priority.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.equipment.id_for_label }}" class="form-label">Equipo Relacionado</label>
+                        {{ form.equipment }}
+                        <div class="form-text">Selecciona el equipo si el problema está relacionado con uno específico.</div>
+                        {% if form.equipment.errors %}
+                        <div class="text-danger">
+                            {% for error in form.equipment.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.description.id_for_label }}" class="form-label">Descripción del Problema *</label>
+                        {{ form.description }}
+                        <div class="form-text">Describe detalladamente el problema que estás experimentando.</div>
+                        {% if form.description.errors %}
+                        <div class="text-danger">
+                            {% for error in form.description.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'support_ticket_list' %}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Crear Ticket
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

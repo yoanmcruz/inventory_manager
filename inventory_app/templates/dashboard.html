@@ -1,0 +1,204 @@
+ 
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - Inventario IT{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-speedometer2"></i> Dashboard</h1>
+    <div class="btn-group">
+        <a href="{% url 'export_report' 'equipment_excel' %}" class="btn btn-outline-success">
+            <i class="bi bi-file-earmark-excel"></i> Exportar Excel
+        </a>
+        <a href="{% url 'export_report' 'equipment_pdf' %}" class="btn btn-outline-danger">
+            <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
+        </a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">Total Equipos</h5>
+                        <h2 class="card-text">{{ total_equipment }}</h2>
+                    </div>
+                    <i class="bi bi-pc-display display-4 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">Disponibles</h5>
+                        <h2 class="card-text">{{ available_equipment }}</h2>
+                    </div>
+                    <i class="bi bi-check-circle display-4 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">En Uso</h5>
+                        <h2 class="card-text">{{ in_use_equipment }}</h2>
+                    </div>
+                    <i class="bi bi-person-check display-4 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">En Reparación</h5>
+                        <h2 class="card-text">{{ in_repair_equipment }}</h2>
+                    </div>
+                    <i class="bi bi-tools display-4 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <i class="bi bi-bar-chart"></i> Equipos por Tipo
+            </div>
+            <div class="card-body">
+                <canvas id="equipmentChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <i class="bi bi-currency-dollar"></i> Costos de Mantenimiento
+            </div>
+            <div class="card-body">
+                <canvas id="maintenanceCostChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-light">
+        <i class="bi bi-clock-history"></i> Mantenimientos Recientes
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Equipo</th>
+                        <th>Tipo</th>
+                        <th>Descripción</th>
+                        <th>Técnico</th>
+                        <th>Fecha</th>
+                        <th>Prioridad</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for maintenance in recent_maintenance %}
+                    <tr>
+                        <td>{{ maintenance.equipment }}</td>
+                        <td><span class="badge bg-secondary">{{ maintenance.get_maintenance_type_display }}</span></td>
+                        <td>{{ maintenance.title }}</td>
+                        <td>{{ maintenance.technician }}</td>
+                        <td>{{ maintenance.start_date|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <span class="badge 
+                                {% if maintenance.priority == 'HIG' %}bg-danger
+                                {% elif maintenance.priority == 'MED' %}bg-warning
+                                {% else %}bg-info{% endif %}">
+                                {{ maintenance.get_priority_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox"></i> No hay mantenimientos registrados
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Gráfico de equipos por tipo
+const equipmentCtx = document.getElementById('equipmentChart').getContext('2d');
+const equipmentChart = new Chart(equipmentCtx, {
+    type: 'bar',
+    data: {
+        labels: [{% for item in equipment_by_type %}'{{ item.get_type_display }}'{% if not forloop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Cantidad de Equipos',
+            data: [{% for item in equipment_by_type %}{{ item.count }}{% if not forloop.last %},{% endif %}{% endfor %}],
+            backgroundColor: 'rgba(54, 162, 235, 0.8)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+// Gráfico de costos de mantenimiento
+const costCtx = document.getElementById('maintenanceCostChart').getContext('2d');
+const costChart = new Chart(costCtx, {
+    type: 'line',
+    data: {
+        labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+        datasets: [{
+            label: 'Costos Mensuales',
+            data: [{% for month in 1..12 %}
+                {% for cost in maintenance_costs %}
+                    {% if cost.start_date__month == forloop.parentloop.counter %}{{ cost.total_cost|default:0 }}{% endif %}
+                {% endfor %}
+                {% if not forloop.last %},{% endif %}
+            {% endfor %}],
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 2,
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

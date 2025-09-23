@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+
+{% block title %}Lista de Backups - Inventario IT{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-database"></i> Backups del Sistema</h1>
+    <div class="btn-group">
+        <a href="{% url 'reports_dashboard' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver a Reportes
+        </a>
+        <a href="{% url 'backup_database' %}" class="btn btn-outline-primary">
+            <i class="bi bi-database"></i> Nuevo Backup
+        </a>
+    </div>
+</div>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> 
+    Los backups automáticos se ejecutan diariamente a las 2:00 AM. 
+    Los backups se mantienen por 30 días antes de ser eliminados automáticamente.
+</div>
+
+{% if backups %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Nombre del Archivo</th>
+                <th>Tamaño</th>
+                <th>Fecha de Creación</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for backup in backups %}
+            <tr>
+                <td>
+                    <i class="bi bi-file-earmark-zip"></i> 
+                    {{ backup.name }}
+                </td>
+                <td>
+                    {% if backup.size < 1024 %}
+                        {{ backup.size }} bytes
+                    {% elif backup.size < 1048576 %}
+                        {{ backup.size|filesizeformat }}
+                    {% else %}
+                        {{ backup.size|filesizeformat }}
+                    {% endif %}
+                </td>
+                <td>{{ backup.created|date:"d/m/Y H:i" }}</td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a href="#" class="btn btn-outline-success" 
+                           onclick="downloadBackup('{{ backup.name }}')">
+                            <i class="bi bi-download"></i> Descargar
+                        </a>
+                        <form method="post" action="#" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="button" class="btn btn-outline-danger" 
+                                    onclick="confirmDelete('{{ backup.name }}')">
+                                <i class="bi bi-trash"></i> Eliminar
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-warning text-center">
+    <i class="bi bi-inbox display-4"></i>
+    <h4>No hay backups disponibles</h4>
+    <p>No se han encontrado archivos de backup en el sistema.</p>
+    <a href="{% url 'backup_database' %}" class="btn btn-primary">
+        <i class="bi bi-database"></i> Crear Primer Backup
+    </a>
+</div>
+{% endif %}
+
+<!-- Modal para confirmar descarga -->
+<div class="modal fade" id="downloadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Descargar Backup</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas descargar este backup?</p>
+                <p><strong id="backupFileName"></strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <a href="#" class="btn btn-primary" id="confirmDownload">Descargar</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function downloadBackup(filename) {
+    document.getElementById('backupFileName').textContent = filename;
+    document.getElementById('confirmDownload').href = `/media/backups/${filename}`;
+    new bootstrap.Modal(document.getElementById('downloadModal')).show();
+}
+
+function confirmDelete(filename) {
+    if (confirm(`¿Estás seguro de que deseas eliminar el backup "${filename}"?`)) {
+        // Aquí iría la lógica para eliminar el backup
+        alert('Funcionalidad de eliminación pendiente de implementar');
+    }
+}
+</script>
+{% endblock %}

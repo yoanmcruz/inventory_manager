@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+{% block title %}Ticket #{{ ticket.id }} - Inventario IT{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-ticket-perforated"></i> Ticket #{{ ticket.id }} - {{ ticket.title }}</h1>
+    <a href="{% url 'support_ticket_list' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Volver a Tickets
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <i class="bi bi-info-circle"></i> Información del Ticket
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-sm-3 fw-bold">Título:</div>
+                    <div class="col-sm-9">{{ ticket.title }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-3 fw-bold">Descripción:</div>
+                    <div class="col-sm-9">{{ ticket.description|linebreaks }}</div>
+                </div>
+                {% if ticket.resolution %}
+                <div class="row mb-3">
+                    <div class="col-sm-3 fw-bold">Resolución:</div>
+                    <div class="col-sm-9">{{ ticket.resolution|linebreaks }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <i class="bi bi-gear"></i> Detalles del Ticket
+            </div>
+            <div class="card-body">
+                <div class="row mb-2">
+                    <div class="col-sm-5 fw-bold">Prioridad:</div>
+                    <div class="col-sm-7">
+                        <span class="badge 
+                            {% if ticket.priority == 'LOW' %}bg-info
+                            {% elif ticket.priority == 'MED' %}bg-warning
+                            {% elif ticket.priority == 'HIGH' %}bg-danger
+                            {% else %}bg-dark{% endif %}">
+                            {{ ticket.get_priority_display }}
+                        </span>
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-sm-5 fw-bold">Estado:</div>
+                    <div class="col-sm-7">
+                        <span class="badge 
+                            {% if ticket.status == 'OPEN' %}bg-primary
+                            {% elif ticket.status == 'IN_PROGRESS' %}bg-warning
+                            {% elif ticket.status == 'RESOLVED' %}bg-success
+                            {% else %}bg-secondary{% endif %}">
+                            {{ ticket.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-sm-5 fw-bold">Creado por:</div>
+                    <div class="col-sm-7">{{ ticket.created_by }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-sm-5 fw-bold">Asignado a:</div>
+                    <div class="col-sm-7">
+                        {% if ticket.assigned_to %}
+                            {{ ticket.assigned_to }}
+                        {% else %}
+                            <span class="text-muted">No asignado</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-sm-5 fw-bold">Equipo:</div>
+                    <div class="col-sm-7">
+                        {% if ticket.equipment %}
+                            <a href="{% url 'equipment_detail' ticket.equipment.pk %}">
+                                {{ ticket.equipment }}
+                            </a>
+                        {% else %}
+                            <span class="text-muted">No especificado</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-sm-5 fw-bold">Fecha creación:</div>
+                    <div class="col-sm-7">{{ ticket.created_at|date:"d/m/Y H:i" }}</div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-sm-5 fw-bold">Última actualización:</div>
+                    <div class="col-sm-7">{{ ticket.updated_at|date:"d/m/Y H:i" }}</div>
+                </div>
+            </div>
+        </div>
+        
+        {% if user.is_superuser %}
+        <div class="card">
+            <div class="card-header bg-light">
+                <i class="bi bi-tools"></i> Acciones de Administrador
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'support_ticket_update' ticket.pk %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Asignar a:</label>
+                        <select name="assigned_to" class="form-select">
+                            <option value="">-- Sin asignar --</option>
+                            {% for tech in technicians %}
+                            <option value="{{ tech.id }}" {% if ticket.assigned_to == tech %}selected{% endif %}>
+                                {{ tech }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Estado:</label>
+                        <select name="status" class="form-select">
+                            {% for status_code, status_name in ticket.STATUS_CHOICES %}
+                            <option value="{{ status_code }}" {% if ticket.status == status_code %}selected{% endif %}>
+                                {{ status_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-check-circle"></i> Actualizar
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,24 @@
+- Eres un Programador web profesional con varios años de experiencia en Python y Django
+- Desarrolla una aplicación web para gestionar un inventario y una bitácora de medios IT. Debe incluir las siguientes características: 
+# Framework: Django (última versión estable) #Base de datos: SQLite para almacenamiento local y sencillo 
+# Funciones principales: 
+## Gestión de inventario completo de equipos: agregar, modificar, eliminar y listar equipos y dispositivos IT con atributos como tipo, marca, modelo, ubicación y estado. 
+## Bitácora de medios: registrar movimientos, reparaciones o incidencias relacionadas con cada equipo, con fecha, descripción y usuario responsable. 
+## Gestión de usuarios y autenticación: registro, login/logout, y roles básicos (admin y usuario estándar) con permisos controlados y un panel de administración. 
+## Que tenga exportaciones de reportes en Excel y PDF. 
+## Sistema de Backups automáticos. 
+## Notificaciones por email. 
+## Búsqueda y Filtros avanzados. 
+## Historial completo de reparaciones y Auditoria del mismo. 
+##Dashboard con estadísticas en tiempo real. 
+#Interfaz sencilla y funcional basada en templates de Django, con formularios para entrada de datos y vistas para consultas. 
+# Características 
+## Autenticación por dominio empresarial (@tuempresa.com) 
+## Registro completo de auditoría por técnico 
+## Panel de administración de usuarios 
+## Inventario de equipos y componentes 
+## Bitácora de reparaciones con trazabilidad 
+## Reportes en Excel y Pdf 
+## Backup automático diario 
+## Dashboard con estadísticas en tiempo real 
+Por favor, genera un esquema inicial del proyecto, modelo de datos Django, configuración básica y ejemplos de vistas y formularios.
