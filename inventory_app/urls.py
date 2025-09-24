@@ -28,4 +28,7 @@ urlpatterns = [
     path('api/dashboard/stats/', views.dashboard_stats_api, name='dashboard_stats_api'),
     path('api/dashboard/equipment-chart/', views.equipment_chart_data_api, name='equipment_chart_api'),
     path('api/dashboard/recent-activity/', views.recent_activity_api, name='recent_activity_api'),
-]
+
+    # URL de registro definida aquí también por si acaso
+    path('accounts/register/', views.register, name='register'),
+    ]

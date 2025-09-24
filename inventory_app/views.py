@@ -639,3 +639,27 @@ def get_or_create_companyuser(user):
             email=f'{user.username}@tuempresa.com'  # Email por defecto
         )
         return company_user
+    
+def register(request):
+    """
+    Vista para registro de nuevos usuarios
+    """
+    if request.method == 'POST':
+        form = UserRegistrationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            
+            # Crear CompanyUser asociado
+            CompanyUser.objects.create(
+                user=user,
+                department=form.cleaned_data['department'],
+                phone=form.cleaned_data['phone'],
+                email=form.cleaned_data['email']
+            )
+            
+            messages.success(request, '¡Cuenta creada exitosamente! Ya puedes iniciar sesión.')
+            return redirect('login')
+    else:
+        form = UserRegistrationForm()
+    
+    return render(request, 'registration/register.html', {'form': form})
