@@ -1,5 +1,7 @@
 class DynamicDashboard {
     constructor() {
+        console.log('DynamicDashboard: Inicializando...');
+        
         this.statsCards = document.getElementById('statsCards');
         this.alertsContainer = document.getElementById('alertsContainer');
         this.recentMaintenance = document.getElementById('recentMaintenance');
@@ -15,29 +17,37 @@ class DynamicDashboard {
     }
     
     init() {
-        this.loadInitialData();
+        console.log('DynamicDashboard: Configurando event listeners...');
         this.setupEventListeners();
-        this.setupAutoRefresh();
+        this.loadData(); // Cargar datos inmediatamente
     }
     
     setupEventListeners() {
         // Botón de actualización manual
-        this.refreshBtn.addEventListener('click', () => {
-            this.loadData();
-        });
+        if (this.refreshBtn) {
+            this.refreshBtn.addEventListener('click', () => {
+                console.log('DynamicDashboard: Actualización manual solicitada');
+                this.loadData();
+            });
+        }
         
         // Auto-actualización
         document.querySelectorAll('.auto-refresh').forEach(item => {
             item.addEventListener('click', (e) => {
                 e.preventDefault();
-                this.setAutoRefresh(parseInt(item.dataset.interval));
+                const interval = parseInt(item.dataset.interval);
+                console.log(`DynamicDashboard: Auto-actualización configurada a ${interval}ms`);
+                this.setAutoRefresh(interval);
             });
         });
         
         // Toggle entre gráfico de torta y barras
-        document.getElementById('chartTypeToggle').addEventListener('change', (e) => {
-            this.toggleChartType(e.target.checked);
-        });
+        const chartToggle = document.getElementById('chartTypeToggle');
+        if (chartToggle) {
+            chartToggle.addEventListener('change', (e) => {
+                this.toggleChartType(e.target.checked);
+            });
+        }
     }
     
     setAutoRefresh(interval) {
@@ -49,6 +59,7 @@ class DynamicDashboard {
         
         if (interval > 0) {
             this.autoRefreshInterval = setInterval(() => {
+                console.log('DynamicDashboard: Auto-actualización ejecutándose...');
                 this.loadData();
             }, interval);
             
@@ -58,36 +69,54 @@ class DynamicDashboard {
         }
     }
     
-    async loadInitialData() {
-        await this.loadData();
-        this.initializeCharts();
-    }
-    
     async loadData() {
+        console.log('DynamicDashboard: Cargando datos...');
         this.showLoading(true);
         
         try {
+            const baseUrl = window.location.origin;
+            const urls = [
+                `${baseUrl}/inventory/api/dashboard/stats/`,
+                `${baseUrl}/inventory/api/dashboard/equipment-chart/`,
+                `${baseUrl}/inventory/api/dashboard/recent-activity/`
+            ];
+            
+            console.log('DynamicDashboard: URLs a cargar:', urls);
+            
             const [statsResponse, chartResponse, activityResponse] = await Promise.all([
-                fetch('/inventory/api/dashboard/stats/'),
-                fetch('/inventory/api/dashboard/equipment-chart/'),
-                fetch('/inventory/api/dashboard/recent-activity/')
+                fetch(urls[0], { credentials: 'same-origin' }),
+                fetch(urls[1], { credentials: 'same-origin' }),
+                fetch(urls[2], { credentials: 'same-origin' })
             ]);
+            
+            if (!statsResponse.ok) throw new Error(`Stats API: ${statsResponse.status}`);
+            if (!chartResponse.ok) throw new Error(`Chart API: ${chartResponse.status}`);
+            if (!activityResponse.ok) throw new Error(`Activity API: ${activityResponse.status}`);
             
             const stats = await statsResponse.json();
             const chartData = await chartResponse.json();
             const activity = await activityResponse.json();
             
+            console.log('DynamicDashboard: Datos recibidos:', { stats, chartData, activity });
+            
             this.updateStatsCards(stats);
-            this.updateCharts(chartData);
             this.updateAlerts(stats.alerts);
             this.updateRecentActivity(activity);
-            this.updateTimestamp(stats.timestamp);
+            
+            // Inicializar gráficos si no existen
+            if (!this.charts.typeChart) {
+                this.initializeCharts();
+            }
+            this.updateCharts(chartData);
             
             this.showNotification('Datos actualizados correctamente', 'success');
             
         } catch (error) {
-            console.error('Error loading dashboard data:', error);
-            this.showNotification('Error al cargar los datos', 'danger');
+            console.error('DynamicDashboard: Error loading data:', error);
+            this.showNotification(`Error al cargar los datos: ${error.message}`, 'danger');
+            
+            // Mostrar datos de fallback
+            this.showFallbackData();
         }
         
         this.showLoading(false);
@@ -151,9 +180,7 @@ class DynamicDashboard {
                             <i class="bi ${card.icon} display-4 opacity-50"></i>
                         </div>
                     </div>
-                    ${card.link ? `
-                    <a href="${card.link}${card.filter ? '?' + card.filter : ''}" class="stretched-link"></a>
-                    ` : ''}
+                    ${card.link ? `<a href="${card.link}${card.filter ? '?' + card.filter : ''}" class="stretched-link"></a>` : ''}
                 </div>
             </div>
         `).join('');
@@ -211,86 +238,106 @@ class DynamicDashboard {
     }
     
     initializeCharts() {
+        console.log('DynamicDashboard: Inicializando gráficos...');
+        
         // Gráfico de equipos por tipo
-        this.charts.typeChart = new Chart(document.getElementById('equipmentTypeChart'), {
-            type: 'doughnut',
-            data: { datasets: [{}] },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { position: 'bottom' },
-                    tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed}` } }
+        const typeCtx = document.getElementById('equipmentTypeChart');
+        if (typeCtx) {
+            this.charts.typeChart = new Chart(typeCtx, {
+                type: 'doughnut',
+                data: { datasets: [{}] },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
                 }
-            }
-        });
+            });
+        }
         
         // Gráfico de equipos por estado
-        this.charts.statusChart = new Chart(document.getElementById('equipmentStatusChart'), {
-            type: 'bar',
-            data: { datasets: [{}] },
-            options: {
-                responsive: true,
-                scales: { y: { beginAtZero: true } },
-                plugins: { legend: { display: false } }
-            }
-        });
+        const statusCtx = document.getElementById('equipmentStatusChart');
+        if (statusCtx) {
+            this.charts.statusChart = new Chart(statusCtx, {
+                type: 'bar',
+                data: { datasets: [{}] },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: true } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
     }
     
     updateCharts(chartData) {
-        // Actualizar gráfico de tipos
-        this.charts.typeChart.data = {
-            labels: chartData.by_type.map(item => item.label),
-            datasets: [{
-                data: chartData.by_type.map(item => item.count),
-                backgroundColor: this.generateColors(chartData.by_type.length, 0.8),
-                borderColor: this.generateColors(chartData.by_type.length, 1),
-                borderWidth: 2
-            }]
-        };
-        this.charts.typeChart.update();
+        if (this.charts.typeChart && chartData.by_type) {
+            this.charts.typeChart.data = {
+                labels: chartData.by_type.map(item => item.label),
+                datasets: [{
+                    data: chartData.by_type.map(item => item.count),
+                    backgroundColor: this.generateColors(chartData.by_type.length, 0.8)
+                }]
+            };
+            this.charts.typeChart.update();
+        }
         
-        // Actualizar gráfico de estados
-        this.charts.statusChart.data = {
-            labels: chartData.by_status.map(item => item.label),
-            datasets: [{
-                data: chartData.by_status.map(item => item.count),
-                backgroundColor: this.generateStatusColors(chartData.by_status),
-                borderColor: this.generateStatusColors(chartData.by_status, 1),
-                borderWidth: 1
-            }]
-        };
-        this.charts.statusChart.update();
+        if (this.charts.statusChart && chartData.by_status) {
+            this.charts.statusChart.data = {
+                labels: chartData.by_status.map(item => item.label),
+                datasets: [{
+                    data: chartData.by_status.map(item => item.count),
+                    backgroundColor: this.generateColors(chartData.by_status.length, 0.8)
+                }]
+            };
+            this.charts.statusChart.update();
+        }
     }
     
     toggleChartType(showBars) {
-        this.charts.typeChart.config.type = showBars ? 'bar' : 'doughnut';
-        this.charts.typeChart.update();
+        if (this.charts.typeChart) {
+            this.charts.typeChart.config.type = showBars ? 'bar' : 'doughnut';
+            this.charts.typeChart.update();
+        }
     }
     
     updateRecentActivity(activity) {
-        // Mantenimientos recientes
-        this.recentMaintenance.innerHTML = activity.maintenance.map(item => `
-            <div class="list-group-item">
-                <div class="d-flex w-100 justify-content-between">
-                    <h6 class="mb-1">${item.title}</h6>
-                    <small>${this.formatDate(item.start_date)}</small>
+        if (this.recentMaintenance && activity.maintenance) {
+            this.recentMaintenance.innerHTML = activity.maintenance.map(item => `
+                <div class="list-group-item">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">${item.title}</h6>
+                        <small>${this.formatDate(item.start_date)}</small>
+                    </div>
+                    <p class="mb-1 small">${item.equipment_brand} ${item.equipment_model}</p>
+                    <small class="text-muted">Por: ${item.technician_name}</small>
                 </div>
-                <p class="mb-1 small">${item.equipment_brand} ${item.equipment_model}</p>
-                <small class="text-muted">Por: ${item.technician_name}</small>
-            </div>
-        `).join('');
+            `).join('');
+        }
         
-        // Tickets recientes
-        this.recentTickets.innerHTML = activity.tickets.map(item => `
-            <div class="list-group-item">
-                <div class="d-flex w-100 justify-content-between">
-                    <h6 class="mb-1">${item.title}</h6>
-                    <span class="badge bg-${this.getPriorityColor(item.priority)}">${item.priority}</span>
+        if (this.recentTickets && activity.tickets) {
+            this.recentTickets.innerHTML = activity.tickets.map(item => `
+                <div class="list-group-item">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">${item.title}</h6>
+                        <span class="badge bg-${this.getPriorityColor(item.priority)}">${item.priority}</span>
+                    </div>
+                    <p class="mb-1 small">Estado: ${item.status}</p>
+                    <small class="text-muted">Creado por: ${item.created_by_name}</small>
                 </div>
-                <p class="mb-1 small">Estado: ${item.status}</p>
-                <small class="text-muted">Creado por: ${item.created_by_name}</small>
+            `).join('');
+        }
+    }
+    
+    showFallbackData() {
+        this.statsCards.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-warning">
+                    <h4>Datos no disponibles</h4>
+                    <p>No se pudieron cargar los datos del dashboard. Verifica la conexión e intenta nuevamente.</p>
+                </div>
             </div>
-        `).join('');
+        `;
     }
     
     // Helper functions
@@ -298,57 +345,37 @@ class DynamicDashboard {
         const colors = [
             `rgba(54, 162, 235, ${opacity})`, `rgba(255, 99, 132, ${opacity})`,
             `rgba(255, 159, 64, ${opacity})`, `rgba(75, 192, 192, ${opacity})`,
-            `rgba(153, 102, 255, ${opacity})`, `rgba(255, 205, 86, ${opacity})`,
-            `rgba(201, 203, 207, ${opacity})`, `rgba(255, 99, 71, ${opacity})`
+            `rgba(153, 102, 255, ${opacity})`, `rgba(255, 205, 86, ${opacity})`
         ];
         return colors.slice(0, count);
     }
     
-    generateStatusColors(statusData, opacity = 0.8) {
-        const colorMap = {
-            'AVA': `rgba(40, 167, 69, ${opacity})`,   // Verde - Disponible
-            'INU': `rgba(0, 123, 255, ${opacity})`,   // Azul - En uso
-            'REP': `rgba(255, 193, 7, ${opacity})`,   // Amarillo - En reparación
-            'RET': `rgba(108, 117, 125, ${opacity})`, // Gris - Retirado
-            'LOS': `rgba(220, 53, 69, ${opacity})`,   // Rojo - Perdido
-        };
-        
-        return statusData.map(item => colorMap[item.status] || `rgba(108, 117, 125, ${opacity})`);
-    }
-    
     getPriorityColor(priority) {
-        const colorMap = {
-            'LOW': 'info',
-            'MED': 'warning',
-            'HIGH': 'danger',
-            'CRITICAL': 'dark'
-        };
+        const colorMap = { 'LOW': 'info', 'MED': 'warning', 'HIGH': 'danger', 'CRITICAL': 'dark' };
         return colorMap[priority] || 'secondary';
     }
     
     formatDate(dateString) {
-        return new Date(dateString).toLocaleDateString('es-ES');
-    }
-    
-    updateTimestamp(timestamp) {
-        // Puedes mostrar la última actualización si lo deseas
-        console.log('Última actualización:', new Date(timestamp).toLocaleString());
+        try {
+            return new Date(dateString).toLocaleDateString('es-ES');
+        } catch {
+            return dateString;
+        }
     }
     
     showLoading(show) {
-        if (show) {
-            this.loadingIndicator.classList.remove('d-none');
-            this.refreshBtn.disabled = true;
-            this.refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise spinner"></i> Actualizando...';
-        } else {
-            this.loadingIndicator.classList.add('d-none');
-            this.refreshBtn.disabled = false;
-            this.refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Actualizar';
+        if (this.loadingIndicator) {
+            this.loadingIndicator.classList.toggle('d-none', !show);
+        }
+        if (this.refreshBtn) {
+            this.refreshBtn.disabled = show;
+            this.refreshBtn.innerHTML = show ? 
+                '<i class="bi bi-arrow-clockwise spinner"></i> Actualizando...' : 
+                '<i class="bi bi-arrow-clockwise"></i> Actualizar';
         }
     }
     
     showNotification(message, type) {
-        // Crear notificación toast
         const toast = document.createElement('div');
         toast.className = `toast align-items-center text-white bg-${type} border-0`;
         toast.innerHTML = `
@@ -367,8 +394,3 @@ class DynamicDashboard {
         });
     }
 }
-
-// Inicializar el dashboard cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', () => {
-    new DynamicDashboard();
-});

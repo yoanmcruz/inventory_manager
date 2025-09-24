@@ -32,6 +32,12 @@
 <!-- Tarjetas de Estadísticas -->
 <div class="row mb-4" id="statsCards">
     <!-- Las tarjetas se cargarán dinámicamente via JavaScript -->
+    <div class="col-12 text-center">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Cargando datos...</span>
+        </div>
+        <p>Cargando datos del dashboard...</p>
+    </div>
 </div>
 
 <!-- Gráficos y Tablas -->
@@ -75,7 +81,9 @@
             </div>
             <div class="card-body">
                 <div id="alertsContainer" class="row">
-                    <!-- Las alertas se cargarán dinámicamente -->
+                    <div class="col-12 text-center">
+                        <p>Cargando alertas...</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -90,7 +98,9 @@
             </div>
             <div class="card-body p-0">
                 <div id="recentMaintenance" class="list-group list-group-flush">
-                    <!-- Los mantenimientos se cargarán dinámicamente -->
+                    <div class="list-group-item text-center">
+                        <p>Cargando mantenimientos...</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -102,23 +112,10 @@
             </div>
             <div class="card-body p-0">
                 <div id="recentTickets" class="list-group list-group-flush">
-                    <!-- Los tickets se cargarán dinámicamente -->
+                    <div class="list-group-item text-center">
+                        <p>Cargando tickets...</p>
+                    </div>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal para detalles -->
-<div class="modal fade" id="detailModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="detailModalTitle">Detalles</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="detailModalBody">
-                <!-- Contenido dinámico -->
             </div>
         </div>
     </div>
@@ -126,7 +123,35 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Cargar Chart.js desde CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+
+<!-- Cargar nuestro JavaScript -->
 <script src="{% static 'js/dashboard.js' %}"></script>
+
+<!-- Script de inicialización -->
+<script>
+// Esperar a que el DOM esté completamente cargado
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Dashboard: DOM cargado, inicializando...');
+    
+    // Verificar que los elementos existan
+    if (typeof DynamicDashboard !== 'undefined') {
+        console.log('Dashboard: Clase DynamicDashboard encontrada');
+        new DynamicDashboard();
+    } else {
+        console.error('Dashboard: Clase DynamicDashboard no encontrada');
+        // Mostrar mensaje de error
+        document.getElementById('statsCards').innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-danger">
+                    <h4>Error de JavaScript</h4>
+                    <p>No se pudo cargar el dashboard dinámico. Verifica la consola para más detalles.</p>
+                    <button onclick="location.reload()" class="btn btn-warning">Reintentar</button>
+                </div>
+            </div>
+        `;
+    }
+});
+</script>
 {% endblock %}

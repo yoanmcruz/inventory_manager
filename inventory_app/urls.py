@@ -23,6 +23,8 @@ urlpatterns = [
     # URLs para backup (NUEVAS)
     path('backup/create/', views.backup_database, name='backup_database'),
     path('backup/list/', views.backup_list, name='backup_list'),
+    path('backup/download/<str:filename>/', views.download_backup, name='download_backup'),
+    path('backup/delete/<str:filename>/', views.delete_backup, name='delete_backup'),
     
     # APIs para dashboard dinámico
     path('api/dashboard/stats/', views.dashboard_stats_api, name='dashboard_stats_api'),

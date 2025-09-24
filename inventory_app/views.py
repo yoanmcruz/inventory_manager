@@ -423,26 +423,32 @@ def export_report(request, report_type):
 
 @login_required
 def reports_dashboard(request):
-    # Obtener información de backups existentes
+    # Obtener información de backups
     backup_count = 0
     latest_backup = None
+    backup_dir = settings.BACKUP_PATH
     
-    if os.path.exists(settings.BACKUP_PATH):
-        backup_files = [f for f in os.listdir(settings.BACKUP_PATH) if f.endswith('.zip')]
+    if os.path.exists(backup_dir):
+        backup_files = [f for f in os.listdir(backup_dir) if f.endswith('.zip') and f.startswith('backup_')]
         backup_count = len(backup_files)
         
         if backup_files:
             # Obtener el backup más reciente
-            backup_files.sort(key=lambda x: os.path.getctime(os.path.join(settings.BACKUP_PATH, x)), reverse=True)
+            backup_files.sort(key=lambda x: os.path.getctime(os.path.join(backup_dir, x)), reverse=True)
+            latest_file = backup_files[0]
+            latest_path = os.path.join(backup_dir, latest_file)
             latest_backup = {
-                'name': backup_files[0],
-                'size': os.path.getsize(os.path.join(settings.BACKUP_PATH, backup_files[0])),
-                'created': datetime.fromtimestamp(os.path.getctime(os.path.join(settings.BACKUP_PATH, backup_files[0])))
+                'name': latest_file,
+                'size': os.path.getsize(latest_path),
+                'size_mb': round(os.path.getsize(latest_path) / (1024 * 1024), 2),
+                'created': datetime.fromtimestamp(os.path.getctime(latest_path))
             }
     
     context = {
         'backup_count': backup_count,
         'latest_backup': latest_backup,
+        'BACKUP_PATH': backup_dir,
+        'DATABASE_NAME': os.path.basename(settings.DATABASES['default']['NAME'])
     }
     return render(request, 'reports.html', context)
 
@@ -581,48 +587,153 @@ def backup_database(request):
             # Crear directorio de backups si no existe
             if not os.path.exists(settings.BACKUP_PATH):
                 os.makedirs(settings.BACKUP_PATH)
+                print(f"Directorio de backups creado: {settings.BACKUP_PATH}")
             
             # Nombre del archivo de backup
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             backup_filename = f"backup_{timestamp}.zip"
             backup_path = os.path.join(settings.BACKUP_PATH, backup_filename)
             
+            print(f"Creando backup en: {backup_path}")
+            
             # Crear archivo ZIP
             with zipfile.ZipFile(backup_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
                 # Backup de la base de datos SQLite
                 db_path = settings.DATABASES['default']['NAME']
                 if os.path.exists(db_path):
-                    zipf.write(db_path, os.path.basename(db_path))
+                    # Usar el nombre de archivo correcto para la base de datos
+                    zipf.write(db_path, 'db.sqlite3')
+                    print(f"Base de datos agregada al backup: {db_path}")
+                else:
+                    print(f"Advertencia: No se encontró la base de datos en {db_path}")
+                
+                # Backup de archivos media si existen
+                if hasattr(settings, 'MEDIA_ROOT') and os.path.exists(settings.MEDIA_ROOT):
+                    for root, dirs, files in os.walk(settings.MEDIA_ROOT):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            # Crear una ruta relativa para el archivo en el ZIP
+                            arcname = os.path.join('media', os.path.relpath(file_path, settings.MEDIA_ROOT))
+                            zipf.write(file_path, arcname)
+                    print("Archivos media agregados al backup")
             
-            messages.success(request, f'Backup creado exitosamente: {backup_filename}')
+            # Verificar que el backup se creó correctamente
+            if os.path.exists(backup_path):
+                file_size = os.path.getsize(backup_path)
+                messages.success(request, f'Backup creado exitosamente: {backup_filename} ({file_size} bytes)')
+                print(f"Backup creado exitosamente: {backup_path} ({file_size} bytes)")
+            else:
+                messages.error(request, 'Error: El archivo de backup no se creó')
+                print("Error: El archivo de backup no se creó")
             
         except Exception as e:
-            messages.error(request, f'Error al crear backup: {str(e)}')
+            error_msg = f'Error al crear backup: {str(e)}'
+            messages.error(request, error_msg)
+            print(f"Error en backup: {error_msg}")
+            import traceback
+            print(traceback.format_exc())
     
+    # Redirigir de vuelta a la página de reportes
     return redirect('reports_dashboard')
 
 @login_required
 @user_passes_test(is_admin)
 def backup_list(request):
-    """ 
-    Vista para listar backups disponibles 
+    """
+    Vista para listar backups disponibles
     """
     backups = []
-    if os.path.exists(settings.BACKUP_PATH):
-            for filename in os.listdir(settings.BACKUP_PATH):
-                if filename.endswith('.zip'):
-                    filepath = os.path.join(settings.BACKUP_PATH, filename)
-                    file_info = {
-                        'name': filename,
-                        'size': os.path.getsize(filepath),
-                        'created': datetime.fromtimestamp(os.path.getctime(filepath)),
-                        'path': filepath
-                    }
-                    backups.append(file_info)
+    backup_dir = settings.BACKUP_PATH
+    
+    # Verificar que el directorio existe
+    if not os.path.exists(backup_dir):
+        os.makedirs(backup_dir)
+        messages.info(request, f'Directorio de backups creado: {backup_dir}')
+    
+    try:
+        # Listar archivos de backup
+        for filename in os.listdir(backup_dir):
+            if filename.endswith('.zip') and filename.startswith('backup_'):
+                filepath = os.path.join(backup_dir, filename)
+                file_info = {
+                    'name': filename,
+                    'size': os.path.getsize(filepath),
+                    'size_mb': round(os.path.getsize(filepath) / (1024 * 1024), 2),
+                    'created': datetime.fromtimestamp(os.path.getctime(filepath)),
+                    'path': filepath,
+                    'url': f'/media/backups/{filename}'  # Para descarga futura
+                }
+                backups.append(file_info)
         
-    # Ordenar por fecha de creación (más reciente primero)
-    backups.sort(key=lambda x: x['created'], reverse=True)
-    return render(request, 'backup_list.html', {'backups': backups})
+        # Ordenar por fecha de creación (más reciente primero)
+        backups.sort(key=lambda x: x['created'], reverse=True)
+        
+    except Exception as e:
+        messages.error(request, f'Error al listar backups: {str(e)}')
+        backups = []
+    
+    context = {
+        'backups': backups,
+        'backup_dir': backup_dir,
+        'backup_count': len(backups)
+    }
+    return render(request, 'backup_list.html', context)
+
+@login_required
+@user_passes_test(is_admin)
+def download_backup(request, filename):
+    """
+    Vista para descargar un backup específico
+    """
+    try:
+        # Validar el nombre del archivo por seguridad
+        if not filename.endswith('.zip') or not filename.startswith('backup_'):
+            messages.error(request, 'Nombre de archivo inválido')
+            return redirect('backup_list')
+        
+        backup_path = os.path.join(settings.BACKUP_PATH, filename)
+        
+        if not os.path.exists(backup_path):
+            messages.error(request, f'Backup no encontrado: {filename}')
+            return redirect('backup_list')
+        
+        # Crear respuesta de descarga
+        with open(backup_path, 'rb') as f:
+            response = HttpResponse(f.read(), content_type='application/zip')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+            
+    except Exception as e:
+        messages.error(request, f'Error al descargar backup: {str(e)}')
+        return redirect('backup_list')
+
+@login_required
+@user_passes_test(is_admin)
+def delete_backup(request, filename):
+    """
+    Vista para eliminar un backup específico
+    """
+    if request.method == 'POST':
+        try:
+            # Validar el nombre del archivo por seguridad
+            if not filename.endswith('.zip') or not filename.startswith('backup_'):
+                messages.error(request, 'Nombre de archivo inválido')
+                return redirect('backup_list')
+            
+            backup_path = os.path.join(settings.BACKUP_PATH, filename)
+            
+            if not os.path.exists(backup_path):
+                messages.error(request, f'Backup no encontrado: {filename}')
+                return redirect('backup_list')
+            
+            # Eliminar el archivo
+            os.remove(backup_path)
+            messages.success(request, f'Backup eliminado: {filename}')
+            
+        except Exception as e:
+            messages.error(request, f'Error al eliminar backup: {str(e)}')
+    
+    return redirect('backup_list')
 
 def get_or_create_companyuser(user):
     """

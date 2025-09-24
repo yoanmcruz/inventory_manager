@@ -29,7 +29,7 @@ pip (gestor de paquetes de Python)
 Dominio empresarial configurado (para emails)
 🛠️ Instalación Paso a Paso
 1. Clonar el repositorio
-git clone https://github.com/yoanmcruz/inventario_it.git
+git clone https://github.com/yoanmcruz/inventory_manager.git
 
 2. Instalar las dependencias 
 pip install -r requeriments.txt

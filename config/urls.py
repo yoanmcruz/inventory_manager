@@ -6,6 +6,7 @@ from inventory_app import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.dashboard, name='dashboard'),
+    path('dashboard/', views.dashboard, name='dashboard'),
     
     # URLs de autenticación estándar
     path('accounts/login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
@@ -24,5 +25,3 @@ urlpatterns = [
     # URLs de autenticación API (solo si es necesario)
     # path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
 ]
-
-# Mejor alternativa: configurar la autenticación API de otra manera
