@@ -23,4 +23,9 @@ urlpatterns = [
     # URLs para backup (NUEVAS)
     path('backup/create/', views.backup_database, name='backup_database'),
     path('backup/list/', views.backup_list, name='backup_list'),
+    
+    # APIs para dashboard dinámico
+    path('api/dashboard/stats/', views.dashboard_stats_api, name='dashboard_stats_api'),
+    path('api/dashboard/equipment-chart/', views.equipment_chart_data_api, name='equipment_chart_api'),
+    path('api/dashboard/recent-activity/', views.recent_activity_api, name='recent_activity_api'),
 ]

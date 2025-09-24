@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
+from django.db import models
 from django.db.models import Q, Count, Sum
 from django.utils import timezone
 from datetime import timedelta
@@ -46,54 +47,170 @@ def get_client_ip(request):
 
 @login_required
 def dashboard(request):
-    # Estadísticas para el dashboard
+    # Estadísticas en tiempo real
     total_equipment = Equipment.objects.count()
     available_equipment = Equipment.objects.filter(status='AVA').count()
     in_use_equipment = Equipment.objects.filter(status='INU').count()
     in_repair_equipment = Equipment.objects.filter(status='REP').count()
     
-    # Equipos por tipo
-    equipment_by_type = Equipment.objects.values('type').annotate(count=Count('id')).order_by('-count')
-    
-    # Mantenimientos recientes
-    recent_maintenance = MaintenanceLog.objects.all().select_related('equipment', 'technician').order_by('-start_date')[:10]
-    
-    # Costos de mantenimiento por mes
-    current_year = timezone.now().year
-    maintenance_costs = MaintenanceLog.objects.filter(
-        start_date__year=current_year
-    ).values('start_date__month').annotate(total_cost=Sum('cost')).order_by('start_date__month')
-    
-    # Nuevas métricas de tickets
+    # Nuevas métricas dinámicas
     open_tickets = SupportTicket.objects.filter(status='OPEN').count()
     in_progress_tickets = SupportTicket.objects.filter(status='IN_PROGRESS').count()
     critical_tickets = SupportTicket.objects.filter(priority='CRITICAL', status__in=['OPEN', 'IN_PROGRESS']).count()
     
-    # Tickets recientes
-    recent_tickets = SupportTicket.objects.all().select_related('created_by', 'assigned_to').order_by('-created_at')[:5]
-    
-    # Equipos con garantía próxima a vencer (30 días)
-    warranty_warning = Equipment.objects.filter(
+    # Equipos que necesitan atención
+    warranty_expiring_soon = Equipment.objects.filter(
         warranty_expiry__isnull=False,
         warranty_expiry__range=[timezone.now().date(), timezone.now().date() + timedelta(days=30)]
     ).count()
     
+    maintenance_pending = MaintenanceLog.objects.filter(end_date__isnull=True).count()
+    
+    # CORRECCIÓN: Simplificar la consulta sin usar models.F
+    equipment_by_type = list(Equipment.objects.values('type').annotate(
+        count=Count('id')
+    ).order_by('-count'))
+    
+    # Convertir códigos a nombres legibles
+    type_display_map = dict(Equipment.EQUIPMENT_TYPES)
+    for item in equipment_by_type:
+        item['display_name'] = type_display_map.get(item['type'], item['type'])
+        item['name'] = item['type']  # Agregar campo name sin usar models.F
+    
+    equipment_by_status = list(Equipment.objects.values('status').annotate(
+        count=Count('id')
+    ).order_by('-count'))
+    
+    status_display_map = dict(Equipment.STATUS_CHOICES)
+    for item in equipment_by_status:
+        item['display_name'] = status_display_map.get(item['status'], item['status'])
+        item['name'] = item['status']  # Agregar campo name sin usar models.F
+    
+    # Mantenimientos recientes para la tabla
+    recent_maintenance = MaintenanceLog.objects.all().select_related(
+        'equipment', 'technician'
+    ).order_by('-start_date')[:10]
+    
+    # Tickets recientes
+    recent_tickets = SupportTicket.objects.all().select_related(
+        'created_by', 'assigned_to', 'equipment'
+    ).order_by('-created_at')[:5]
+    
     context = {
+        # Tarjetas principales
         'total_equipment': total_equipment,
         'available_equipment': available_equipment,
         'in_use_equipment': in_use_equipment,
         'in_repair_equipment': in_repair_equipment,
-        'equipment_by_type': equipment_by_type,
-        'recent_maintenance': recent_maintenance,
-        'maintenance_costs': maintenance_costs,
         'open_tickets': open_tickets,
         'in_progress_tickets': in_progress_tickets,
         'critical_tickets': critical_tickets,
+        'warranty_expiring_soon': warranty_expiring_soon,
+        'maintenance_pending': maintenance_pending,
+        
+        # Datos para gráficos (CORREGIDO)
+        'equipment_by_type': equipment_by_type,
+        'equipment_by_status': equipment_by_status,
+        
+        # Tablas
+        'recent_maintenance': recent_maintenance,
         'recent_tickets': recent_tickets,
-        'warranty_warning': warranty_warning,
     }
     return render(request, 'dashboard.html', context)
 
+@login_required
+def dashboard_stats_api(request):
+    """
+    API para obtener estadísticas actualizadas del dashboard
+    """
+    stats = {
+        'equipment': {
+            'total': Equipment.objects.count(),
+            'available': Equipment.objects.filter(status='AVA').count(),
+            'in_use': Equipment.objects.filter(status='INU').count(),
+            'in_repair': Equipment.objects.filter(status='REP').count(),
+        },
+        'tickets': {
+            'open': SupportTicket.objects.filter(status='OPEN').count(),
+            'in_progress': SupportTicket.objects.filter(status='IN_PROGRESS').count(),
+            'critical': SupportTicket.objects.filter(priority='CRITICAL', status__in=['OPEN', 'IN_PROGRESS']).count(),
+        },
+        'alerts': {
+            'warranty_expiring': Equipment.objects.filter(
+                warranty_expiry__isnull=False,
+                warranty_expiry__range=[timezone.now().date(), timezone.now().date() + timedelta(days=30)]
+            ).count(),
+            'maintenance_pending': MaintenanceLog.objects.filter(end_date__isnull=True).count(),
+        },
+        'timestamp': timezone.now().isoformat()
+    }
+    return JsonResponse(stats)
+
+@login_required
+def equipment_chart_data_api(request):
+    """
+    API para datos de gráficos de equipos (CORREGIDO)
+    """
+    equipment_by_type = list(Equipment.objects.values('type').annotate(
+        count=Count('id')
+    ).order_by('-count'))
+    
+    type_display_map = dict(Equipment.EQUIPMENT_TYPES)
+    for item in equipment_by_type:
+        item['label'] = type_display_map.get(item['type'], item['type'])
+    
+    equipment_by_status = list(Equipment.objects.values('status').annotate(
+        count=Count('id')
+    ).order_by('-count'))
+    
+    status_display_map = dict(Equipment.STATUS_CHOICES)
+    for item in equipment_by_status:
+        item['label'] = status_display_map.get(item['status'], item['status'])
+    
+    return JsonResponse({
+        'by_type': equipment_by_type,
+        'by_status': equipment_by_status
+    })
+
+@login_required
+def recent_activity_api(request):
+    """
+    API para actividad reciente (CORREGIDO - alternativa sin models.F)
+    """
+    # Usar una alternativa a models.F para evitar el error
+    recent_maintenance = []
+    maintenance_logs = MaintenanceLog.objects.select_related('equipment', 'technician').order_by('-start_date')[:5]
+    
+    for maintenance in maintenance_logs:
+        recent_maintenance.append({
+            'id': maintenance.id,
+            'title': maintenance.title,
+            'start_date': maintenance.start_date.isoformat(),
+            'maintenance_type': maintenance.maintenance_type,
+            'equipment_brand': maintenance.equipment.brand if maintenance.equipment else 'N/A',
+            'equipment_model': maintenance.equipment.model if maintenance.equipment else 'N/A',
+            'technician_name': maintenance.technician.user.get_full_name() if maintenance.technician else 'N/A'
+        })
+    
+    recent_tickets = []
+    tickets = SupportTicket.objects.select_related('created_by', 'equipment').order_by('-created_at')[:5]
+    
+    for ticket in tickets:
+        recent_tickets.append({
+            'id': ticket.id,
+            'title': ticket.title,
+            'created_at': ticket.created_at.isoformat(),
+            'priority': ticket.priority,
+            'status': ticket.status,
+            'created_by_name': ticket.created_by.user.get_full_name() if ticket.created_by else 'N/A',
+            'equipment_model': ticket.equipment.model if ticket.equipment else 'N/A'
+        })
+    
+    return JsonResponse({
+        'maintenance': recent_maintenance,
+        'tickets': recent_tickets
+    })
+    
 class EquipmentListView(LoginRequiredMixin, ListView):
     model = Equipment
     template_name = 'equipment_list.html'

@@ -81,6 +81,19 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'inventory_app/static')]
 
+# Directorio donde se recopilarán los archivos estáticos para producción
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Configuración de finders de archivos estáticos
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+]
+
+# Media files (uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGIN_REDIRECT_URL = '/dashboard/'
@@ -123,3 +136,13 @@ REST_FRAMEWORK = {
         'user': '1000/day'
     }
 }
+
+if DEBUG:
+    # En desarrollo, servir archivos estáticos desde los directorios de apps
+    STATICFILES_DIRS = [
+        os.path.join(BASE_DIR, 'inventory_app/static'),
+    ]
+    # STATIC_ROOT no es necesario en desarrollo si DEBUG=True
+else:
+    # En producción, usar STATIC_ROOT
+    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
