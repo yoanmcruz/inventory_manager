@@ -98,3 +98,79 @@ class SupportTicketUpdateForm(forms.ModelForm):
             'status': forms.Select(attrs={'class': 'form-control'}),
             'resolution': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Describe la resolución del problema...'}),
         }
+        
+class AdvancedReportForm(forms.Form):
+    REPORT_TYPES = (
+        ('equipment_summary', 'Resumen de Equipos'),
+        ('maintenance_costs', 'Costos de Mantenimiento'),
+        ('ticket_analysis', 'Análisis de Tickets'),
+        ('warranty_status', 'Estado de Garantías'),
+        ('performance_metrics', 'Métricas de Performance'),
+    )
+    
+    DATE_RANGES = (
+        ('last_7_days', 'Últimos 7 días'),
+        ('last_30_days', 'Últimos 30 días'),
+        ('last_90_days', 'Últimos 90 días'),
+        ('last_year', 'Último año'),
+        ('custom', 'Rango Personalizado'),
+    )
+    
+    report_type = forms.ChoiceField(
+        choices=REPORT_TYPES,
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'report_type'})
+    )
+    
+    date_range = forms.ChoiceField(
+        choices=DATE_RANGES,
+        widget=forms.Select(attrs={'class': 'form-control', 'id': 'date_range'})
+    )
+    
+    start_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date',
+            'id': 'start_date'
+        })
+    )
+    
+    end_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control', 
+            'type': 'date',
+            'id': 'end_date'
+        })
+    )
+    
+    equipment_type = forms.MultipleChoiceField(
+        choices=Equipment.EQUIPMENT_TYPES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'})
+    )
+    
+    status_filter = forms.MultipleChoiceField(
+        choices=Equipment.STATUS_CHOICES,
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'})
+    )
+    
+    export_format = forms.ChoiceField(
+        choices=[('html', 'HTML'), ('pdf', 'PDF'), ('excel', 'Excel'), ('csv', 'CSV')],
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        date_range = cleaned_data.get('date_range')
+        start_date = cleaned_data.get('start_date')
+        end_date = cleaned_data.get('end_date')
+        
+        if date_range == 'custom' and (not start_date or not end_date):
+            raise forms.ValidationError("Para rango personalizado, debe especificar fecha inicio y fin.")
+        
+        if start_date and end_date and start_date > end_date:
+            raise forms.ValidationError("La fecha de inicio no puede ser mayor a la fecha de fin.")
+        
+        return cleaned_data
